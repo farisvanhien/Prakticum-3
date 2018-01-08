@@ -1,0 +1,7 @@
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Release\template.exe.config
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Release\template.exe
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Release\template.pdb
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Release\OpenTK.dll
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\obj\Release\template.csprojResolveAssemblyReference.cache
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\obj\Release\template.exe
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\obj\Release\template.pdb
