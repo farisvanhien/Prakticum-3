@@ -16,7 +16,7 @@ namespace Template {
         // two buffers for the pattern: simulate reads 'second', writes to 'pattern'
         uint[] pattern;
         uint[] second;
-        uint pw = 10 , ph; // note: pw is in uints; width in bits is 32 this value.
+        uint pw , ph; // note: pw is in uints; width in bits is 32 this value.
 
         // helper function for setting one bit in the pattern buffer
         void BitSet(uint x, uint y) { pattern[y * pw + (x >> 5)] |= 1U << (int)(x & 31); }
