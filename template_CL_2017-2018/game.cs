@@ -47,7 +47,7 @@ namespace Template {
         
         public void Init()
 	    {
-            /* StreamReader sr = new StreamReader("../../data/turing_js_r.rle");
+            StreamReader sr = new StreamReader("../../data/turing_js_r.rle");
             uint state = 0, n = 0, x = 0, y = 0;
             while (true)
             {
@@ -74,7 +74,7 @@ namespace Template {
                             state = n = 0;
                         }
                     }
-            }*/
+            }
         }
 	    public void Tick()
 	    {
