@@ -16,11 +16,13 @@ namespace Template {
         // two buffers for the pattern: simulate reads 'second', writes to 'pattern'
         uint[] pattern;
         uint[] second;
-        uint pw, ph; // note: pw is in uints; width in bits is 32 this value.
-                     // helper function for setting one bit in the pattern buffer
+        uint pw = 10 , ph; // note: pw is in uints; width in bits is 32 this value.
+
+        // helper function for setting one bit in the pattern buffer
         void BitSet(uint x, uint y) { pattern[y * pw + (x >> 5)] |= 1U << (int)(x & 31); }
         // helper function for getting one bit from the secondary pattern buffer
         uint GetBit(uint x, uint y) { return (second[y * pw + (x >> 5)] >> (int)(x & 31)) & 1U; }
+
         // mouse handling: dragging functionality
         uint xoffset = 0, yoffset = 0;
         bool lastLButtonState = false;
@@ -86,7 +88,8 @@ namespace Template {
 				      else kernel.SetArgument( 0, buffer );
 		    kernel.SetArgument( 1, t );
             kernel.SetArgument( 2, patternbuffer );
-            kernel.SetArgument(3, secondbuffer);
+            kernel.SetArgument( 3, secondbuffer);
+            kernel.SetArgument( 4, pw);
             t += 0.1f;
             // execute kernel
             long[] workSize = { 512, 512 };
