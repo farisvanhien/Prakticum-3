@@ -1,0 +1,6 @@
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Debug\template.exe.config
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Debug\template.exe
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Debug\template.pdb
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\bin\Debug\OpenTK.dll
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\obj\Debug\template.exe
+D:\School\conc\Prakticum 3\gameoflife_2017-2018\obj\Debug\template.pdb

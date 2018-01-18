@@ -77,6 +77,8 @@ namespace Template {
                             state = n = 0;
                         }
                     }
+                // swap buffers
+                for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
             }
         }
 	    public void Tick()
