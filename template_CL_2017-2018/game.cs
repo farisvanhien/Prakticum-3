@@ -8,6 +8,7 @@ using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using System.IO;
 
+
 namespace Template {
 
     class Game
@@ -16,7 +17,7 @@ namespace Template {
         // two buffers for the pattern: simulate reads 'second', writes to 'pattern'
         uint[] pattern;
         uint[] second;
-        uint pw = 10 , ph; // note: pw is in uints; width in bits is 32 this value.
+        uint pw, ph; // note: pw is in uints; width in bits is 32 this value.
 
         // helper function for setting one bit in the pattern buffer
         void BitSet(uint x, uint y) { pattern[y * pw + (x >> 5)] |= 1U << (int)(x & 31); }
@@ -80,42 +81,11 @@ namespace Template {
         }
 	    public void Tick()
 	    {
-		    GL.Finish();
-		    // clear the screen
-		    screen.Clear( 0 );
-		    // do opencl stuff
-		    if (GLInterop) kernel.SetArgument( 0, image );
-				      else kernel.SetArgument( 0, buffer );
-		    kernel.SetArgument( 1, t );
-            kernel.SetArgument( 2, patternbuffer );
-            kernel.SetArgument( 3, secondbuffer);
-            kernel.SetArgument( 4, pw);
-            t += 0.1f;
-            // execute kernel
-            long[] workSize = { 512, 512 };
-            long[] localSize = { 32, 4 };
+            doTick();
+            //GLTick();
 
-
-
-            // NO INTEROP PATH:
-            // Use OpenCL to fill a C# pixel array, encapsulated in an
-            // OpenCLBuffer<int> object (buffer). After filling the buffer, it
-            // is copied to the screen surface, so the template code can show
-            // it in the window.
-            // execute the kernel
-            kernel.Execute( workSize, localSize );
-		    // get the data from the device to the host
-		    patternbuffer.CopyFromDevice();
-            secondbuffer.CopyFromDevice();
-            for (int i = 0; i < pattern2.Length; i++)
-                Console.WriteLine(pattern2[i]);
-            for (int i = 0; i < second2.Length; i++)
-                Console.WriteLine(second2[i]);
-            // plot pixels using the data on the host
-            for ( int y = 0; y < 512; y++ ) for( int x = 0; x < 512; x++ )
-		    {
-			    screen.pixels[x + y * screen.width] = buffer[x + y * 512];
-		    }
+            
+            
 	    }
         // SIMULATE
         // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
@@ -138,7 +108,7 @@ namespace Template {
         }
         public void Render() 
 	    {
-		    // use OpenGL to draw a quad using the texture that was filled by OpenCL
+		    /* // use OpenGL to draw a quad using the texture that was filled by OpenCL
 		    if (GLInterop)
 		    {
 			    GL.LoadIdentity();
@@ -149,8 +119,90 @@ namespace Template {
 			    GL.TexCoord2( 1.0f, 0.0f ); GL.Vertex2(  1.0f,  1.0f );
 			    GL.TexCoord2( 0.0f, 0.0f ); GL.Vertex2( -1.0f,  1.0f );
 			    GL.End();
-		    }
+		    }*/
 	    }
+        public void GLTick()
+        {
+            GL.Finish();
+            // clear the screen
+            screen.Clear(0);
+            // do opencl stuff
+            if (GLInterop) kernel.SetArgument(0, image);
+            else kernel.SetArgument(0, buffer);
+            kernel.SetArgument(1, t);
+            kernel.SetArgument(2, patternbuffer);
+            kernel.SetArgument(3, secondbuffer);
+            kernel.SetArgument(4, pw);
+            t += 0.1f;
+            // execute kernel
+            long[] workSize = { 512, 512 };
+            long[] localSize = { 32, 4 };
+
+
+
+            // NO INTEROP PATH:
+            // Use OpenCL to fill a C# pixel array, encapsulated in an
+            // OpenCLBuffer<int> object (buffer). After filling the buffer, it
+            // is copied to the screen surface, so the template code can show
+            // it in the window.
+            // execute the kernel
+            kernel.Execute(workSize, localSize);
+            // get the data from the device to the host
+            patternbuffer.CopyFromDevice();
+            secondbuffer.CopyFromDevice();
+            //for (int i = 0; i < pattern2.Length; i++)
+            //    Console.WriteLine(pattern2[i]);
+            //for (int i = 0; i < second2.Length; i++)
+            //    Console.WriteLine(second2[i]);
+            // plot pixels using the data on the host
+            for (int y = 0; y < 512; y++) for (int x = 0; x < 512; x++)
+                {
+                    screen.pixels[x + y * screen.width] = buffer[x + y * 512];
+                }
+        }
+        public void doTick()
+        {
+            // start timer
+            timer.Restart();
+            // run the simulation, 1 step
+            Simulate();
+            // visualize current state
+            screen.Clear(0);
+            for (uint y = 0; y < screen.height; y++)
+            {
+                for (uint x = 0; x < screen.width; x++)
+                {
+                    if (GetBit(x + xoffset, y + yoffset) == 1)
+                    {
+                        screen.Plot(x, y, 0xffffff);
+                    }
+                }
+            }
+                
+            // report performance
+            Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
+        }
+        public void SetMouseState(int x, int y, bool pressed)
+        {
+            if (pressed)
+            {
+                if (lastLButtonState)
+                {
+                    int deltax = x - dragXStart, deltay = y - dragYStart;
+                    xoffset = (uint)Math.Min(pw * 32 - screen.width, Math.Max(0, offsetXStart - deltax));
+                    yoffset = (uint)Math.Min(ph - screen.height, Math.Max(0, offsetYStart - deltay));
+                }
+                else
+                {
+                    dragXStart = x;
+                    dragYStart = y;
+                    offsetXStart = (int)xoffset;
+                    offsetYStart = (int)yoffset;
+                    lastLButtonState = true;
+                }
+            }
+            else lastLButtonState = false;
+        }
     }
 
 } // namespace Template
