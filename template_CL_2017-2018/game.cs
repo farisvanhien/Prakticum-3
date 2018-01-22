@@ -86,8 +86,57 @@ namespace Template {
         }
 	    public void Tick()
 	    {
-            doTick();
-	    }
+            // start timer
+            timer.Restart();
+
+            // clear the screen
+            screen.Clear(0);
+            // clear destination pattern
+            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
+            // do opencl stuff
+            kernel.SetArgument(0, buffer);
+            kernel.SetArgument(1, t);
+            kernel.SetArgument(2, patternbuffer);
+            kernel.SetArgument(3, secondbuffer);
+            kernel.SetArgument(4, pw);
+            kernel.SetArgument(5, ph);
+            t += 0.1f;
+            // execute kernel
+            long[] workSize = { 512, 512 };
+            long[] localSize = { 32, 4 };
+
+            // NO INTEROP PATH:
+            // Use OpenCL to fill a C# pixel array, encapsulated in an
+            // OpenCLBuffer<int> object (buffer). After filling the buffer, it
+            // is copied to the screen surface, so the template code can show
+            // it in the window.
+            // execute the kernel
+            kernel.Execute(workSize, localSize);
+            // get the data from the device to the host
+            patternbuffer.CopyFromDevice();
+            secondbuffer.CopyFromDevice();
+
+            for (uint y = 0; y < screen.height; y++)
+            {
+                for (uint x = 0; x < screen.width; x++)
+                {
+                    if (GetBit(x + xoffset, y + yoffset) == 1)
+                    {
+                        screen.Plot(x, y, 0xffffff);
+                    }
+                }
+            }
+
+            // report performance
+            Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
+
+            // plot pixels using the data on the host
+            //for (int y = 0; y < 512; y++) for (int x = 0; x < 512; x++)
+            //    {
+            //        screen.pixels[x + y * screen.width] = buffer[x + y * 512];
+            //    }
+        }
+ 
         // SIMULATE
         // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
         // in array 'pattern'. At the end, the result is copied back to 'second' for the next generation.
@@ -108,64 +157,6 @@ namespace Template {
             for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
         }
         
-        public void GLTick()
-        {
-            // clear the screen
-            screen.Clear(0);
-            // clear destination pattern
-            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
-            // do opencl stuff
-            kernel.SetArgument(0, buffer);
-            kernel.SetArgument(1, t);
-            kernel.SetArgument(2, patternbuffer);
-            kernel.SetArgument(3, secondbuffer);
-            kernel.SetArgument(4, pw);
-            kernel.SetArgument(5, ph);
-            t += 0.1f;
-            // execute kernel
-            long[] workSize = { 512, 512 };
-            long[] localSize = { 32, 4 };
-
-
-
-            // NO INTEROP PATH:
-            // Use OpenCL to fill a C# pixel array, encapsulated in an
-            // OpenCLBuffer<int> object (buffer). After filling the buffer, it
-            // is copied to the screen surface, so the template code can show
-            // it in the window.
-            // execute the kernel
-            kernel.Execute(workSize, localSize);
-            // get the data from the device to the host
-            patternbuffer.CopyFromDevice();
-            secondbuffer.CopyFromDevice();
-
-            // plot pixels using the data on the host
-            //for (int y = 0; y < 512; y++) for (int x = 0; x < 512; x++)
-            //    {
-            //        screen.pixels[x + y * screen.width] = buffer[x + y * 512];
-            //    }
-        }
-        public void doTick()
-        {
-            // start timer
-            timer.Restart();
-            // run the simulation, 1 step
-            GLTick();
-            // visualize current state
-            for (uint y = 0; y < screen.height; y++)
-            {
-                for (uint x = 0; x < screen.width; x++)
-                {
-                    if (GetBit(x + xoffset, y + yoffset) == 1)
-                    {
-                        screen.Plot(x, y, 0xffffff);
-                    }
-                }
-            }
-                
-            // report performance
-            Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
-        }
         public void SetMouseState(int x, int y, bool pressed)
         {
             if (pressed)
