@@ -66,8 +66,6 @@ namespace Template {
                     ph = UInt32.Parse(sub[3]);
                     pattern = new uint[pw * ph];
                     second = new uint[pw * ph];
-                    patternbuffer = new OpenCLBuffer<uint>(ocl, pattern);
-                    secondbuffer = new OpenCLBuffer<uint>(ocl, second);
                 }
                 else while (pos < line.Length)
                     {
@@ -80,9 +78,11 @@ namespace Template {
                             state = n = 0;
                         }
                     }
-                // swap buffers
+                //// swap buffers
                 for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
             }
+            patternbuffer = new OpenCLBuffer<uint>(ocl, 512 * 512);
+            secondbuffer = new OpenCLBuffer<uint>(ocl, second);
         }
 	    public void Tick()
 	    {
@@ -111,10 +111,14 @@ namespace Template {
             // is copied to the screen surface, so the template code can show
             // it in the window.
             // execute the kernel
-            kernel.Execute(workSize, localSize);
+            kernel.Execute(workSize);
             // get the data from the device to the host
             patternbuffer.CopyFromDevice();
             secondbuffer.CopyFromDevice();
+            
+
+            // swap buffers
+            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
 
             for (uint y = 0; y < screen.height; y++)
             {
