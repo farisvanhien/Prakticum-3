@@ -15,22 +15,18 @@ __kernel void device_function( __global int* a, float t, __global uint* pattern,
 {
 	int idx = get_global_id( 0 );
 	int idy = get_global_id( 1 );
-	if(idx > 5) return;
-	if(idy > 5) return;
-	pattern[idx] *= 2;
-	second[idx] *= 12;
+	if(idx >= 512) return;
+	if(idy >= 512) return;
 
-	// clear destination pattern
-    for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
+
     // process all pixels, skipping one pixel boundary
     uint w = pw * 32, h = ph;
-    for (uint y = 1; y < h - 1; y++) for (uint x = 1; x < w - 1; x++)
-        {
-            // count active neighbors
-            uint n = GetBit(x - 1, y - 1, second, pw) + GetBit(x, y - 1, second, pw) + GetBit(x + 1, y - 1, second, pw) + GetBit(x - 1, y, second, pw) +
-                        GetBit(x + 1, y, second, pw) + GetBit(x - 1, y + 1, second, pw) + GetBit(x, y + 1, second, pw) + GetBit(x + 1, y + 1, second, pw);
-            if ((GetBit(x, y, second, pw) == 1 && n == 2) || n == 3) BitSet(x, y, pattern, pw);
-        }
+    
+    // count active neighbors
+    uint n = GetBit(idx - 1, idy - 1, second, pw) + GetBit(idx, idy - 1, second, pw) + GetBit(idx + 1, idy - 1, second, pw) + GetBit(idx - 1, idy, second, pw) +
+                GetBit(idx + 1, idy, second, pw) + GetBit(idx - 1, idy + 1, second, pw) + GetBit(idx, idy + 1, second, pw) + GetBit(idx + 1, idy + 1, second, pw);
+    if ((GetBit(idx, idy, second, pw) == 1 && n == 2) || n == 3) BitSet(idx, idy, pattern, pw);
+    
     // swap buffers
     for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
 

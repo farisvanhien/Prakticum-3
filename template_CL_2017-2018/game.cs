@@ -87,10 +87,6 @@ namespace Template {
 	    public void Tick()
 	    {
             doTick();
-            GLTick();
-
-            
-            
 	    }
         // SIMULATE
         // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
@@ -114,9 +110,10 @@ namespace Template {
         
         public void GLTick()
         {
-            GL.Finish();
             // clear the screen
             screen.Clear(0);
+            // clear destination pattern
+            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
             // do opencl stuff
             kernel.SetArgument(0, buffer);
             kernel.SetArgument(1, t);
