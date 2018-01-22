@@ -15,8 +15,8 @@ namespace Template {
     {
         int generation = 0;
         // two buffers for the pattern: simulate reads 'second', writes to 'pattern'
-        uint[] pattern;
-        uint[] second;
+        static uint[] pattern;
+        static uint[] second;
         uint pw, ph; // note: pw is in uints; width in bits is 32 this value.
 
         // helper function for setting one bit in the pattern buffer
@@ -41,10 +41,11 @@ namespace Template {
 	    // create an OpenGL texture to which OpenCL can send data
 	    OpenCLImage<int> image = new OpenCLImage<int>( ocl, 512, 512 );
 	    public Surface screen;
-        static uint[] pattern2 = { 1, 2, 3, 4, 5 };
-        OpenCLBuffer<uint> patternbuffer = new OpenCLBuffer<uint>(ocl, pattern2);
-        static uint[] second2 = { 10 , 15 , 20, 25 , 30 };
-        OpenCLBuffer<uint> secondbuffer = new OpenCLBuffer<uint>(ocl, second2);
+
+        OpenCLBuffer<uint> patternbuffer;
+        OpenCLBuffer<uint> secondbuffer;
+
+
         Stopwatch timer = new Stopwatch();
 	    float t = 21.5f;
         
@@ -65,6 +66,8 @@ namespace Template {
                     ph = UInt32.Parse(sub[3]);
                     pattern = new uint[pw * ph];
                     second = new uint[pw * ph];
+                    patternbuffer = new OpenCLBuffer<uint>(ocl, pattern);
+                    secondbuffer = new OpenCLBuffer<uint>(ocl, second);
                 }
                 else while (pos < line.Length)
                     {
@@ -84,7 +87,7 @@ namespace Template {
 	    public void Tick()
 	    {
             doTick();
-            //GLTick();
+            GLTick();
 
             
             
@@ -108,33 +111,19 @@ namespace Template {
             // swap buffers
             for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
         }
-        public void Render() 
-	    {
-		    /* // use OpenGL to draw a quad using the texture that was filled by OpenCL
-		    if (GLInterop)
-		    {
-			    GL.LoadIdentity();
-			    GL.BindTexture( TextureTarget.Texture2D, image.OpenGLTextureID );
-			    GL.Begin( PrimitiveType.Quads );
-			    GL.TexCoord2( 0.0f, 1.0f ); GL.Vertex2( -1.0f, -1.0f );
-			    GL.TexCoord2( 1.0f, 1.0f ); GL.Vertex2(  1.0f, -1.0f );
-			    GL.TexCoord2( 1.0f, 0.0f ); GL.Vertex2(  1.0f,  1.0f );
-			    GL.TexCoord2( 0.0f, 0.0f ); GL.Vertex2( -1.0f,  1.0f );
-			    GL.End();
-		    }*/
-	    }
+        
         public void GLTick()
         {
             GL.Finish();
             // clear the screen
             screen.Clear(0);
             // do opencl stuff
-            if (GLInterop) kernel.SetArgument(0, image);
-            else kernel.SetArgument(0, buffer);
+            kernel.SetArgument(0, buffer);
             kernel.SetArgument(1, t);
             kernel.SetArgument(2, patternbuffer);
             kernel.SetArgument(3, secondbuffer);
             kernel.SetArgument(4, pw);
+            kernel.SetArgument(5, ph);
             t += 0.1f;
             // execute kernel
             long[] workSize = { 512, 512 };
@@ -152,24 +141,20 @@ namespace Template {
             // get the data from the device to the host
             patternbuffer.CopyFromDevice();
             secondbuffer.CopyFromDevice();
-            //for (int i = 0; i < pattern2.Length; i++)
-            //    Console.WriteLine(pattern2[i]);
-            //for (int i = 0; i < second2.Length; i++)
-            //    Console.WriteLine(second2[i]);
+
             // plot pixels using the data on the host
-            for (int y = 0; y < 512; y++) for (int x = 0; x < 512; x++)
-                {
-                    screen.pixels[x + y * screen.width] = buffer[x + y * 512];
-                }
+            //for (int y = 0; y < 512; y++) for (int x = 0; x < 512; x++)
+            //    {
+            //        screen.pixels[x + y * screen.width] = buffer[x + y * 512];
+            //    }
         }
         public void doTick()
         {
             // start timer
             timer.Restart();
             // run the simulation, 1 step
-            Simulate();
+            GLTick();
             // visualize current state
-            screen.Clear(0);
             for (uint y = 0; y < screen.height; y++)
             {
                 for (uint x = 0; x < screen.width; x++)
