@@ -78,7 +78,7 @@ namespace Template {
                             state = n = 0;
                         }
                     }
-                //// swap buffers
+                // swap buffers
                 for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
             }
             patternbuffer = new OpenCLBuffer<uint>(ocl, 512 * 512);
@@ -94,16 +94,13 @@ namespace Template {
             // clear destination pattern
             for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
             // do opencl stuff
-            kernel.SetArgument(0, buffer);
-            kernel.SetArgument(1, t);
-            kernel.SetArgument(2, patternbuffer);
-            kernel.SetArgument(3, secondbuffer);
+            kernel.SetArgument(0, patternbuffer);
+            kernel.SetArgument(1, secondbuffer);
+            kernel.SetArgument(2, pw);
+            kernel.SetArgument(3, ph);
             kernel.SetArgument(4, pw);
-            kernel.SetArgument(5, ph);
-            t += 0.1f;
             // execute kernel
             long[] workSize = { 512, 512 };
-            long[] localSize = { 32, 4 };
 
             // NO INTEROP PATH:
             // Use OpenCL to fill a C# pixel array, encapsulated in an
@@ -115,11 +112,11 @@ namespace Template {
             // get the data from the device to the host
             patternbuffer.CopyFromDevice();
             secondbuffer.CopyFromDevice();
-            
+
 
             // swap buffers
-            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
-
+            //for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
+            
             for (uint y = 0; y < screen.height; y++)
             {
                 for (uint x = 0; x < screen.width; x++)
