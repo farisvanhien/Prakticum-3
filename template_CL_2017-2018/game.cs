@@ -47,7 +47,6 @@ namespace Template {
 
 
         Stopwatch timer = new Stopwatch();
-	    float t = 21.5f;
         
         public void Init()
 	    {
@@ -89,16 +88,47 @@ namespace Template {
             // start timer
             timer.Restart();
 
-            // clear the screen
-            screen.Clear(0);
+
+            OpenCLTick();     ///OpenCL
+            //Simulate();       ///CPU for debug purposes
+            //TestSimulate();   ///Simulate but 512x512
+
+
+            DrawScreen();
+            // report performance
+            Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
+        }
+ 
+        // SIMULATE
+        // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
+        // in array 'pattern'. At the end, the result is copied back to 'second' for the next generation.
+        void Simulate()
+        {
             // clear destination pattern
             for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
+            // process all pixels, skipping one pixel boundary
+            uint w = pw * 32, h = ph;
+            for (uint y = 1; y < h - 1; y++)
+                for (uint x = 1; x < w - 1; x++)
+                    {
+                        // count active neighbors
+                        uint n = GetBit(x - 1, y - 1) + GetBit(x, y - 1) + GetBit(x + 1, y - 1) + GetBit(x - 1, y) +
+                                 GetBit(x + 1, y) + GetBit(x - 1, y + 1) + GetBit(x, y + 1) + GetBit(x + 1, y + 1);
+                        if ((GetBit(x, y) == 1 && n == 2) || n == 3) BitSet(x, y);
+                    }
+            // swap buffers
+            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
+        }
+        void OpenCLTick()
+        {
+            patternbuffer = new OpenCLBuffer<uint>(ocl, 512 * 512);
+            secondbuffer = new OpenCLBuffer<uint>(ocl, second);
+
             // do opencl stuff
             kernel.SetArgument(0, patternbuffer);
             kernel.SetArgument(1, secondbuffer);
             kernel.SetArgument(2, pw);
             kernel.SetArgument(3, ph);
-            kernel.SetArgument(4, pw);
             // execute kernel
             long[] workSize = { 512, 512 };
 
@@ -111,12 +141,33 @@ namespace Template {
             kernel.Execute(workSize);
             // get the data from the device to the host
             patternbuffer.CopyFromDevice();
-            secondbuffer.CopyFromDevice();
-
-
-            // swap buffers
-            //for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
+            //secondbuffer.CopyFromDevice();
             
+            // swap buffers
+            for (int i = 0; i < pw * ph; i++) second[i] = patternbuffer[i];
+        }
+        void TestSimulate()
+        {
+            // clear destination pattern
+            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
+            // process all pixels, skipping one pixel boundary
+            uint w = 512, h = 512;
+            for (uint y = 1; y < h - 1; y++)
+                for (uint x = 1; x < w - 1; x++)
+                {
+                    // count active neighbors
+                    uint n = GetBit(x - 1, y - 1) + GetBit(x, y - 1) + GetBit(x + 1, y - 1) + GetBit(x - 1, y) +
+                             GetBit(x + 1, y) + GetBit(x - 1, y + 1) + GetBit(x, y + 1) + GetBit(x + 1, y + 1);
+                    if ((GetBit(x, y) == 1 && n == 2) || n == 3) BitSet(x, y);
+                }
+            // swap buffers
+            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
+        }
+
+        public void DrawScreen()
+        {
+            // clear the screen
+            screen.Clear(0);
             for (uint y = 0; y < screen.height; y++)
             {
                 for (uint x = 0; x < screen.width; x++)
@@ -127,37 +178,7 @@ namespace Template {
                     }
                 }
             }
-
-            // report performance
-            Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
-
-            // plot pixels using the data on the host
-            //for (int y = 0; y < 512; y++) for (int x = 0; x < 512; x++)
-            //    {
-            //        screen.pixels[x + y * screen.width] = buffer[x + y * 512];
-            //    }
         }
- 
-        // SIMULATE
-        // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
-        // in array 'pattern'. At the end, the result is copied back to 'second' for the next generation.
-        void Simulate()
-        {
-            // clear destination pattern
-            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
-            // process all pixels, skipping one pixel boundary
-            uint w = pw * 32, h = ph;
-            for (uint y = 1; y < h - 1; y++) for (uint x = 1; x < w - 1; x++)
-                {
-                    // count active neighbors
-                    uint n = GetBit(x - 1, y - 1) + GetBit(x, y - 1) + GetBit(x + 1, y - 1) + GetBit(x - 1, y) +
-                             GetBit(x + 1, y) + GetBit(x - 1, y + 1) + GetBit(x, y + 1) + GetBit(x + 1, y + 1);
-                    if ((GetBit(x, y) == 1 && n == 2) || n == 3) BitSet(x, y);
-                }
-            // swap buffers
-            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
-        }
-        
         public void SetMouseState(int x, int y, bool pressed)
         {
             if (pressed)
