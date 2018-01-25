@@ -45,7 +45,6 @@ namespace Template {
         OpenCLBuffer<uint> patternbuffer;
         OpenCLBuffer<uint> secondbuffer;
 
-
         Stopwatch timer = new Stopwatch();
         
         public void Init()
@@ -80,7 +79,7 @@ namespace Template {
                 // swap buffers
                 for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
             }
-            patternbuffer = new OpenCLBuffer<uint>(ocl, 512 * 512);
+            patternbuffer = new OpenCLBuffer<uint>(ocl,(int)(pw * ph));
             secondbuffer = new OpenCLBuffer<uint>(ocl, second);
         }
 	    public void Tick()
@@ -91,7 +90,6 @@ namespace Template {
 
             OpenCLTick();     ///OpenCL
             //Simulate();       ///CPU for debug purposes
-            //TestSimulate();   ///Simulate but 512x512
 
 
             DrawScreen();
@@ -121,7 +119,7 @@ namespace Template {
         }
         void OpenCLTick()
         {
-            for (int i = 0; i < pw * ph; i++) patternbuffer[i] = 0;
+            for (int i = 0; i < patternbuffer.Length; i++) patternbuffer[i] = 0;
             patternbuffer.CopyToDevice();
             secondbuffer.CopyToDevice();
 

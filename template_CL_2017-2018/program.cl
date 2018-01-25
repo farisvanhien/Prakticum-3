@@ -18,22 +18,7 @@ __kernel void device_function(__global uint* pattern, __global uint* second, uin
 	if(idx >= pw*32 - 1 || idx < 1) return;
 	if(idy >= ph - 1 || idy < 1) return;
 
-	/*
-	//===========================================================================
-	if(idx > 1) return;
-	if(idy > 1) return;
 	
-	uint w = 512, h = 512;
-	for (uint y = 1; y < h - 1; y++)
-		for (uint x = 1; x < w - 1; x++)
-		{
-			// count active neighbors
-			uint n = GetBit(x - 1, y - 1, second, pw) + GetBit(x, y - 1, second, pw) + GetBit(x + 1, y - 1, second, pw) + GetBit(x - 1, y, second, pw) +
-						GetBit(x + 1, y, second, pw) + GetBit(x - 1, y + 1, second, pw) + GetBit(x, y + 1, second, pw) + GetBit(x + 1, y + 1, second, pw);
-			if ((GetBit(x, y, second, pw) == 1 && n == 2) || n == 3) BitSet(x, y, pattern, pw);
-		}
-	//===========================================================================
-    */
 
 	/*
 	//===========================================================================
@@ -63,21 +48,5 @@ __kernel void device_function(__global uint* pattern, __global uint* second, uin
 
 
 	
-	
-
-	/*
-	//===========================================================================
-	for(int i = 1; i < 32; i++)
-	{
-		uint x = (idx * 32) + i;
-		uint y = idy;
-		// count active neighbors
-		uint n = GetBit(x - 1, y - 1, second, pw) + GetBit(x, y - 1, second, pw) + GetBit(x + 1, y - 1, second, pw) + GetBit(x - 1, y, second, pw) +
-					GetBit(x + 1, y, second, pw) + GetBit(x - 1, y + 1, second, pw) + GetBit(x, y + 1, second, pw) + GetBit(x + 1, y + 1, second, pw);
-		//if ((GetBit(x, y, second, pw) == 1 && n == 2) || n == 3) 
-		BitSet(x, y, pattern, pw);
-	}
-	//===========================================================================
-	*/
 	
 }
