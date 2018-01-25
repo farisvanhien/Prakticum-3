@@ -87,11 +87,9 @@ namespace Template {
             // start timer
             timer.Restart();
 
-
-            OpenCLTick();     ///OpenCL
-            //Simulate();       ///CPU for debug purposes
-
-
+            //OpenCLTick();     ///OpenCL
+            Simulate();       ///CPU for debug purposes
+            
             DrawScreen();
             // report performance
             Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
