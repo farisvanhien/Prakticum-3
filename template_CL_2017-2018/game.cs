@@ -121,8 +121,9 @@ namespace Template {
         }
         void OpenCLTick()
         {
-            patternbuffer = new OpenCLBuffer<uint>(ocl, 512 * 512);
-            secondbuffer = new OpenCLBuffer<uint>(ocl, second);
+            for (int i = 0; i < pw * ph; i++) patternbuffer[i] = 0;
+            patternbuffer.CopyToDevice();
+            secondbuffer.CopyToDevice();
 
             // do opencl stuff
             kernel.SetArgument(0, patternbuffer);
@@ -130,7 +131,7 @@ namespace Template {
             kernel.SetArgument(2, pw);
             kernel.SetArgument(3, ph);
             // execute kernel
-            long[] workSize = { 512, 512 };
+            long[] workSize = { pw*32,ph };
 
             // NO INTEROP PATH:
             // Use OpenCL to fill a C# pixel array, encapsulated in an
