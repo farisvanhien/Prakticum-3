@@ -72,6 +72,8 @@ namespace Template
             // called once per frame; app logic
             var keyboard = OpenTK.Input.Keyboard.GetState();
             if (keyboard[OpenTK.Input.Key.Escape]) this.Exit();
+            if (keyboard[OpenTK.Input.Key.Z]) game.SetZoom(true);
+            else if (keyboard[OpenTK.Input.Key.X]) game.SetZoom(false);
             var mouse = OpenTK.Input.Mouse.GetState();
             Point p = CursorPosition.GetCursorPosition();
             game.SetMouseState(p.X, p.Y, mouse.LeftButton == ButtonState.Pressed);

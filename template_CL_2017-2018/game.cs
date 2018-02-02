@@ -45,6 +45,8 @@ namespace Template {
         OpenCLBuffer<uint> patternbuffer;
         OpenCLBuffer<uint> secondbuffer;
 
+        uint zoom = 1; //zoomfactor used to zoom in and zoom out
+
         Stopwatch timer = new Stopwatch();
         
         public void Init()
@@ -88,9 +90,12 @@ namespace Template {
             timer.Restart();
 
             //OpenCLTick();     ///OpenCL
-            Simulate();       ///CPU for debug purposes
-            
-            DrawScreen();
+            OpenCLTickEdge();
+            //Simulate();       ///CPU for debug purposes
+
+            //DrawScreen();           //Draw the screen normally
+            DrawScreenZoom();     //Draw the screen with the ability to zoom in/out
+
             // report performance
             Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
         }
@@ -98,7 +103,7 @@ namespace Template {
         // SIMULATE
         // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
         // in array 'pattern'. At the end, the result is copied back to 'second' for the next generation.
-        void Simulate()
+        void Simulate() //The original sequential simulate
         {
             // clear destination pattern
             for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
@@ -143,24 +148,34 @@ namespace Template {
             // swap buffers
             for (int i = 0; i < pw * ph; i++) second[i] = patternbuffer[i];
         }
-        void TestSimulate()
+        void OpenCLTickEdge()
         {
-            // clear destination pattern
-            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
-            // process all pixels, skipping one pixel boundary
-            uint w = 512, h = 512;
-            for (uint y = 1; y < h - 1; y++)
-                for (uint x = 1; x < w - 1; x++)
-                {
-                    // count active neighbors
-                    uint n = GetBit(x - 1, y - 1) + GetBit(x, y - 1) + GetBit(x + 1, y - 1) + GetBit(x - 1, y) +
-                             GetBit(x + 1, y) + GetBit(x - 1, y + 1) + GetBit(x, y + 1) + GetBit(x + 1, y + 1);
-                    if ((GetBit(x, y) == 1 && n == 2) || n == 3) BitSet(x, y);
-                }
-            // swap buffers
-            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
-        }
+            for (int i = 0; i < patternbuffer.Length; i++) patternbuffer[i] = 0;
+            patternbuffer.CopyToDevice();
+            secondbuffer.CopyToDevice();
 
+            // do opencl stuff
+            kernel.SetArgument(0, patternbuffer);
+            kernel.SetArgument(1, secondbuffer);
+            kernel.SetArgument(2, pw);
+            kernel.SetArgument(3, ph);
+            // execute kernel
+            long[] workSize = { pw * 32, ph};
+
+            // NO INTEROP PATH:
+            // Use OpenCL to fill a C# pixel array, encapsulated in an
+            // OpenCLBuffer<int> object (buffer). After filling the buffer, it
+            // is copied to the screen surface, so the template code can show
+            // it in the window.
+            // execute the kernel
+            kernel.Execute(workSize);
+            // get the data from the device to the host
+            patternbuffer.CopyFromDevice();
+            //secondbuffer.CopyFromDevice();
+
+            // swap buffers
+            for (int i = 0; i < pw * ph; i++) second[i] = patternbuffer[i];
+        }
         public void DrawScreen()
         {
             // clear the screen
@@ -196,6 +211,34 @@ namespace Template {
                 }
             }
             else lastLButtonState = false;
+        }
+        public void SetZoom(bool adj) //adjusts the zoomfactor by incrementing/decremnting
+        {
+            if (adj) zoom++;
+            else if (zoom > 1) zoom--; //make sure that the zoom is never smaller than the original
+        }
+        public void DrawScreenZoom()
+        {
+            // clear the screen
+            screen.Clear(0);
+            //you essentially draw a smaller segment of the field
+            for (uint y = 0; y < screen.height / zoom; y++)
+            {
+                for (uint x = 0; x < screen.width / zoom; x++)
+                {
+                    if (GetBit(x + xoffset, y + yoffset) == 1)
+                    {
+                        //draw a white square per white bit
+                        for (uint i = 0; i < zoom; i++)
+                        {
+                            for (uint j = 0; j < zoom; j++)
+                            {
+                                screen.Plot(x * zoom + i, y * zoom + j, 0xffffff);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
