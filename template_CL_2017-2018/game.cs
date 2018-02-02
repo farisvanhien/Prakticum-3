@@ -105,12 +105,12 @@ namespace Template {
             patternbuffer.CopyToDevice();
             secondbuffer.CopyToDevice();
 
-            // do opencl stuff
+            // Set openCL arguments
             kernel.SetArgument(0, patternbuffer);
             kernel.SetArgument(1, secondbuffer);
             kernel.SetArgument(2, pw);
             kernel.SetArgument(3, ph);
-            // execute kernel
+            // Execute kernel
             long[] workSize = { pw*32,ph };
 
             // NO INTEROP PATH:
