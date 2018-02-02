@@ -13,33 +13,24 @@ namespace Template {
 
     class Game
     {
+        #region Member Variables
         int generation = 0;
         // two buffers for the pattern: simulate reads 'second', writes to 'pattern'
         static uint[] pattern;
         static uint[] second;
         uint pw, ph; // note: pw is in uints; width in bits is 32 this value.
 
-        // helper function for setting one bit in the pattern buffer
-        void BitSet(uint x, uint y) { pattern[y * pw + (x >> 5)] |= 1U << (int)(x & 31); }
-        // helper function for getting one bit from the secondary pattern buffer
-        uint GetBit(uint x, uint y) { return (second[y * pw + (x >> 5)] >> (int)(x & 31)) & 1U; }
-
         // mouse handling: dragging functionality
         uint xoffset = 0, yoffset = 0;
         bool lastLButtonState = false;
         int dragXStart, dragYStart, offsetXStart, offsetYStart;
 
-
-        // when GLInterop is set to true, the fractal is rendered directly to an OpenGL texture
-        bool GLInterop = false;
 	    // load the OpenCL program; this creates the OpenCL context
 	    static OpenCLProgram ocl = new OpenCLProgram( "../../program.cl" );
 	    // find the kernel named 'device_function' in the program
 	    OpenCLKernel kernel = new OpenCLKernel( ocl, "device_function" );
 	    // create a regular buffer; by default this resides on both the host and the device
 	    OpenCLBuffer<int> buffer = new OpenCLBuffer<int>( ocl, 512 * 512 );
-	    // create an OpenGL texture to which OpenCL can send data
-	    OpenCLImage<int> image = new OpenCLImage<int>( ocl, 512, 512 );
 	    public Surface screen;
 
         OpenCLBuffer<uint> patternbuffer;
@@ -48,7 +39,14 @@ namespace Template {
         uint zoom = 1; //zoomfactor used to zoom in and zoom out
 
         Stopwatch timer = new Stopwatch();
-        
+        #endregion
+        #region Bit Helpers
+        // helper function for setting one bit in the pattern buffer
+        void BitSet(uint x, uint y) { pattern[y * pw + (x >> 5)] |= 1U << (int)(x & 31); }
+        // helper function for getting one bit from the secondary pattern buffer
+        uint GetBit(uint x, uint y) { return (second[y * pw + (x >> 5)] >> (int)(x & 31)) & 1U; }
+        #endregion
+
         public void Init()
 	    {
             StreamReader sr = new StreamReader("../../data/turing_js_r.rle");
@@ -86,40 +84,21 @@ namespace Template {
         }
 	    public void Tick()
 	    {
-            // start timer
-            timer.Restart();
+            timer.Restart();    //Start timer
+            OpenCLTick();       //OpenCL work
+            DrawScreenZoom();   //Draw the screen with the ability to zoom in/out
 
-            //OpenCLTick();     ///OpenCL
-            OpenCLTickEdge();
-            //Simulate();       ///CPU for debug purposes
-
-            //DrawScreen();           //Draw the screen normally
-            DrawScreenZoom();     //Draw the screen with the ability to zoom in/out
+            /*============================
+            //Old Initial methods for CPU
+            //Kept for debugging purposes
+            Simulate();         //CPU for debug purposes
+            DrawScreen();       //Draw the screen normally
+            ============================*/
 
             // report performance
             Console.WriteLine("generation " + generation++ + ": " + timer.ElapsedMilliseconds + "ms");
         }
- 
-        // SIMULATE
-        // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
-        // in array 'pattern'. At the end, the result is copied back to 'second' for the next generation.
-        void Simulate() //The original sequential simulate
-        {
-            // clear destination pattern
-            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
-            // process all pixels, skipping one pixel boundary
-            uint w = pw * 32, h = ph;
-            for (uint y = 1; y < h - 1; y++)
-                for (uint x = 1; x < w - 1; x++)
-                    {
-                        // count active neighbors
-                        uint n = GetBit(x - 1, y - 1) + GetBit(x, y - 1) + GetBit(x + 1, y - 1) + GetBit(x - 1, y) +
-                                 GetBit(x + 1, y) + GetBit(x - 1, y + 1) + GetBit(x, y + 1) + GetBit(x + 1, y + 1);
-                        if ((GetBit(x, y) == 1 && n == 2) || n == 3) BitSet(x, y);
-                    }
-            // swap buffers
-            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
-        }
+        // Computes the simulation via OpenCL
         void OpenCLTick()
         {
             for (int i = 0; i < patternbuffer.Length; i++) patternbuffer[i] = 0;
@@ -143,53 +122,8 @@ namespace Template {
             kernel.Execute(workSize);
             // get the data from the device to the host
             patternbuffer.CopyFromDevice();
-            //secondbuffer.CopyFromDevice();
-            
             // swap buffers
             for (int i = 0; i < pw * ph; i++) second[i] = patternbuffer[i];
-        }
-        void OpenCLTickEdge()
-        {
-            for (int i = 0; i < patternbuffer.Length; i++) patternbuffer[i] = 0;
-            patternbuffer.CopyToDevice();
-            secondbuffer.CopyToDevice();
-
-            // do opencl stuff
-            kernel.SetArgument(0, patternbuffer);
-            kernel.SetArgument(1, secondbuffer);
-            kernel.SetArgument(2, pw);
-            kernel.SetArgument(3, ph);
-            // execute kernel
-            long[] workSize = { pw * 32, ph};
-
-            // NO INTEROP PATH:
-            // Use OpenCL to fill a C# pixel array, encapsulated in an
-            // OpenCLBuffer<int> object (buffer). After filling the buffer, it
-            // is copied to the screen surface, so the template code can show
-            // it in the window.
-            // execute the kernel
-            kernel.Execute(workSize);
-            // get the data from the device to the host
-            patternbuffer.CopyFromDevice();
-            //secondbuffer.CopyFromDevice();
-
-            // swap buffers
-            for (int i = 0; i < pw * ph; i++) second[i] = patternbuffer[i];
-        }
-        public void DrawScreen()
-        {
-            // clear the screen
-            screen.Clear(0);
-            for (uint y = 0; y < screen.height; y++)
-            {
-                for (uint x = 0; x < screen.width; x++)
-                {
-                    if (GetBit(x + xoffset, y + yoffset) == 1)
-                    {
-                        screen.Plot(x, y, 0xffffff);
-                    }
-                }
-            }
         }
         public void SetMouseState(int x, int y, bool pressed)
         {
@@ -212,23 +146,25 @@ namespace Template {
             }
             else lastLButtonState = false;
         }
-        public void SetZoom(bool adj) //adjusts the zoomfactor by incrementing/decremnting
+        // Adjusts the zoomfactor by incrementing/decremnting
+        public void SetZoom(bool adj) 
         {
             if (adj) zoom++;
-            else if (zoom > 1) zoom--; //make sure that the zoom is never smaller than the original
+            else if (zoom > 1) zoom--; // make sure that the zoom is never smaller than the original
         }
+        // Draws pixel on the screen with ability to zoom
         public void DrawScreenZoom()
         {
             // clear the screen
             screen.Clear(0);
-            //you essentially draw a smaller segment of the field
+            // you essentially draw a smaller segment of the field
             for (uint y = 0; y < screen.height / zoom; y++)
             {
                 for (uint x = 0; x < screen.width / zoom; x++)
                 {
                     if (GetBit(x + xoffset, y + yoffset) == 1)
                     {
-                        //draw a white square per white bit
+                        // draw a white square per white bit
                         for (uint i = 0; i < zoom; i++)
                         {
                             for (uint j = 0; j < zoom; j++)
@@ -240,6 +176,44 @@ namespace Template {
                 }
             }
         }
+
+        #region Old/Original Methods
+        // SIMULATE
+        // Takes the pattern in array 'second', and applies the rules of Game of Life to produce the next state
+        // in array 'pattern'. At the end, the result is copied back to 'second' for the next generation.
+        void Simulate() //The original sequential simulate
+        {
+            // clear destination pattern
+            for (int i = 0; i < pw * ph; i++) pattern[i] = 0;
+            // process all pixels, skipping one pixel boundary
+            uint w = pw * 32, h = ph;
+            for (uint y = 1; y < h - 1; y++)
+                for (uint x = 1; x < w - 1; x++)
+                {
+                    // count active neighbors
+                    uint n = GetBit(x - 1, y - 1) + GetBit(x, y - 1) + GetBit(x + 1, y - 1) + GetBit(x - 1, y) +
+                             GetBit(x + 1, y) + GetBit(x - 1, y + 1) + GetBit(x, y + 1) + GetBit(x + 1, y + 1);
+                    if ((GetBit(x, y) == 1 && n == 2) || n == 3) BitSet(x, y);
+                }
+            // swap buffers
+            for (int i = 0; i < pw * ph; i++) second[i] = pattern[i];
+        }
+        public void DrawScreen()
+        {
+            // clear the screen
+            screen.Clear(0);
+            for (uint y = 0; y < screen.height; y++)
+            {
+                for (uint x = 0; x < screen.width; x++)
+                {
+                    if (GetBit(x + xoffset, y + yoffset) == 1)
+                    {
+                        screen.Plot(x, y, 0xffffff);
+                    }
+                }
+            }
+        }
+        #endregion
     }
 
 } // namespace Template
